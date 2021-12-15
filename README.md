@@ -374,4 +374,39 @@ Ciò consentirebbe di estrarre una certa dipendenza dai dati condivisi dal corpo
 
 Suddividendo i concetti ortogonali di `ownership` e `data` dependencies , il problema della ricorsione infinita, come descritto sopra, è notevolmente limitato. Le dipendenze esplicite dei dati rendono anche più chiaro quando l'uso di un `Var` o `Rx` è inteso come una dipendenza dei dati e non solo una semplice lettura del valore corrente (ad esempio `.now`). Senza questa distinzione, è più facile introdurre dipendenze di dati "accidentali" inattese e non volute.
  ##  Operazioni aggiuntive
- 
+ Oltre ai mattoni di base di `Var/Rx/Obs`, Scala.Rx fornisce anche un insieme di combinatori che ti permettono di trasformare facilmente i tuoi Rx; ciò consente al programmatore di evitare di riscrivere costantemente la logica per le modalità comuni di costruzione del grafo del flusso di dati. I cinque combinatori di base: `map()`, `flatMap()`, `filter()`, `reduce()` e `fold()` sono tutti modellati sulla libreria delle collezioni scala e forniscono un modo semplice per trasformare i valori che escono da un Rx.
+ ### Map
+ ```
+ val a = Var(10)
+val b = Rx{ a() + 2 }
+val c = a.map(_*2)
+val d = b.map(_+3)
+println(c.now) // 20
+println(d.now) // 15
+a() = 1
+println(c.now) // 2
+println(d.now) // 6
+```
+`map` fa quello che ti aspetteresti, creando un nuovo Rx con il valore del vecchio Rx trasformato da qualche funzione. Ad esempio, `a.map(_*2)` è essenzialmente equivalente a `Rx{ a() * 2 }`, ma in qualche modo più comodo da scrivere.
+ ### FlatMap
+```
+val a = Var(10)
+val b = Var(1)
+val c = a.flatMap(a => Rx { a*b() })
+println(c.now) // 10
+b() = 2
+println(c.now) // 20
+```
+`flatMap` è analogo a flatMap dalla libreria delle collezioni in quanto consente di unire Rx nidificati di tipo `Rx[Rx[_]]` in un singolo `Rx[_]`.
+
+Questo in combinazione con il map combinator consente alla sintassi di comprensione di scala di funzionare con Rx e Var :
+```
+val a = Var(10)
+val b = for {
+  aa <- a
+  bb <- Rx { a() + 5}
+  cc <- Var(1).map(_*2)
+} yield {
+  aa + bb + cc
+}
+```
