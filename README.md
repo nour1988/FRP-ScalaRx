@@ -103,3 +103,32 @@ println(count) // 2
 a() = 4
 println(count) // 5
 ```
+Questo esempio fa la stessa cosa del codice sopra.
+
+Nota che il corpo degli Obs viene eseguito una volta inizialmente quando viene dichiarato. Ciò corrisponde al modo in cui ogni Rx viene calcolato una volta quando viene dichiarato inizialmente. ma è ipotizzabile che si voglia un Obs che si attivi per la prima volta solo quando l'Rx che sta ascoltando cambia. Puoi farlo usando la sintassi alternativa `triggerLater`:
+```
+val a = Var(1)
+var count = 0
+val o = a.triggerLater {
+  count = count + 1
+}
+println(count) // 0
+a() = 2
+println(count) // 1
+```
+Un Obs agisce per incapsulare il callback che esegue. Possono essere passati in giro, archiviati in variabili, ecc. Quando Obs viene raccolto, il callback smetterà di attivarsi. Pertanto, un Obs dovrebbe essere memorizzato nell'oggetto che interessa: se il callback riguarda solo quell'oggetto, non importa quando l'Obs stesso viene raccolto spazzatura, poiché accadrà solo dopo che l'oggetto che lo tiene diventa irraggiungibile, nel qual caso i suoi effetti non possono essere osservati comunque. Un Obs può anche essere disattivato attivamente, se è necessaria una garanzia più forte:
+```
+val a = Var(1)
+val b = Rx{ 2 * a() }
+var target = 0
+val o = b.trigger {
+  target = b.now
+}
+println(target) // 2
+a() = 2
+println(target) // 4
+o.kill()
+a() = 3
+println(target) // 4
+```
+Dopo aver chiamato manualmente `.kill()`, Obs non si attiva più. Oltre a `.kill()`ing Obss, puoi anche uccidere Rxs, che impedisce ulteriori aggiornamenti.
