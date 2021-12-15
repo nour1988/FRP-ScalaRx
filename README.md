@@ -20,4 +20,55 @@ libraryDependencies += "com.lihaoyi" %% "scalarx" % "0.4.1"
 ```
 Successivamente, aprire la console sbt e incollare l'esempio sopra nella console dovrebbe funzionare.
 ## ScalaJS
-Oltre a funzionare sulla JVM, Scala.Rx compila anche su Scala-Js. Questo artefatto è attualmente su Maven Central e può essere utilizzato tramite il seguente frammento SBT:
+Oltre a funzionare sulla JVM, Scala.Rx compila anche su Scala-Js. Questo artefatto è attualmente su Maven Central e può essere utilizzato tramite il seguente frammento SBT:  
+```
+libraryDependencies += "com.lihaoyi" %%% "scalarx" % "0.4.1"
+```
+Ci sono alcune piccole differenze tra l'esecuzione di Scala.Rx sulla JVM e in Javascript, in particolare per quanto riguarda le operazioni asincrone, il modello di parallelismo e il modello di memoria. In generale, tuttavia, tutti gli esempi forniti nella documentazione di seguito funzioneranno perfettamente se compilati in modo incrociato in javascript ed eseguiti nel browser.
+
+Scala.rx 0.4.1 è compatibile solo con ScalaJS 0.6.5+.
+## Utilizzo di Scala.Rx
+Le operazioni primarie richiedono solo `import rx._` prima di essere utilizzate, con operazioni aggiuntive che richiedono anche `import rx.ops._`. Alcuni degli esempi seguenti utilizzano anche varie importazioni da `scala.concurrent` o `scalatest`.
+###  Utilizzo di base
+```
+import rx._
+
+val a = Var(1); val b = Var(2)
+val c = Rx{ a() + b() }
+println(c.now) // 3
+a() = 4
+println(c.now) // 6
+```
+L'esempio sopra è un programma eseguibile. In generale, `import rx._` è sufficiente per iniziare con `Scala.Rx` e verrà assunto in tutti gli altri esempi.
+
+Le entità di base di cui devi preoccuparti sono Var, Rx e Obs:
+- `Var`: una variabile intelligente che puoi ottenere usando a() e impostare usando a() = .... Ogni volta che il suo valore cambia, esegue il ping di qualsiasi entità a valle che deve essere ricalcolata.
+- `Rx`: una definizione reattiva che cattura automaticamente qualsiasi Var o altro Rx che viene chiamato nel suo corpo, contrassegnandoli come dipendenze e ricalcolandoli ogni volta che uno di essi cambia. Come un Var, puoi usare la sintassi a() per recuperare il suo valore, ed esegue anche il ping delle entità a valle quando il valore cambia.
+- `Obs`: un osservatore su uno o più Var s o Rx s, che esegue qualche effetto collaterale quando il nodo osservato cambia valore e gli invia un ping.
+
+Utilizzando questi componenti, è possibile costruire facilmente un grafico del flusso di dati e mantenere aggiornati i vari valori all'interno del grafico del flusso di dati quando gli input al grafico cambiano:
+```
+val a = Var(1) // 1
+
+val b = Var(2) // 2
+
+val c = Rx{ a() + b() } // 3
+val d = Rx{ c() * 5 } // 15
+val e = Rx{ c() + 4 } // 7
+val f = Rx{ d() + e() + 4 } // 26
+
+println(f.now) // 26
+a() = 3
+println(f.now) // 38
+```
+Il grafico del flusso di dati per questo programma ha il seguente aspetto:
+![image](https://user-images.githubusercontent.com/63450698/146184977-c17ca96d-f073-445b-9257-87bf40fb653f.png)
+
+Dove le Var sono rappresentate da quadrati, le Rx da cerchi e le dipendenze da frecce. Ogni Rx è etichettato con il suo nome, il suo corpo e il suo valore.
+La modifica del valore di `a` fa sì che le modifiche si propaghino attraverso il grafico del flusso di dati
+![image](https://user-images.githubusercontent.com/63450698/146185165-3785090c-726b-4a0e-b0b9-1dd25679c418.png)
+
+Come si può vedere sopra, la modifica del valore di `a` fa sì che la modifica si propaghi attraverso `c` `d` `e` fino a `f`. Puoi usare Var e Rx ovunque tu usi una variabile normale.
+
+Le modifiche si propagano attraverso il grafico del flusso di dati in onde. Ogni aggiornamento di un Var innesca una propagazione, che spinge le modifiche da quel Var `a` qualsiasi Rx che è (direttamente o indirettamente) dipendente dal suo valore. Nel processo, è possibile ricalcolare una Rx più di una volta.
+
