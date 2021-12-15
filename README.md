@@ -255,3 +255,12 @@ fakeTime = 456
 page.now.update()
 println(page.now.html.now) // "About Me, time: 456"
 ```
+In questo caso, definiamo una pagina web che ha un valore `html` (a `Rx[String]`). Tuttavia, a seconda dell'`URL`, potrebbe essere una `HomePage` o una `AboutPage`, quindi il nostro `page` oggetto  è un `Rx[WebPage]`.
+
+Avere una `Rx[WebPage]`, dove la `WebPage` ha una `Rx[String]` all'interno, sembra naturale e ovvio, e Scala.Rx ti permette di farlo in modo semplice e naturale. Questo tipo di situazione di oggetti all'interno degli oggetti si presenta in modo molto naturale quando si modella un problema in modo orientato agli oggetti. La capacità di Scala.Rx di gestire con grazia i corrispondenti Rx all'interno di Rxs gli consente di adattarsi con grazia a questo paradigma.
+ ## Ownership Context
+ Nell'ultimo esempio sopra, abbiamo dovuto introdurre il concetto di proprietà in cui viene utilizzato `Ctx.Owner`. Infatti, se tralasciamo `(implicit ctx: Ctx.Owner)`, otterremmo il seguente errore di compilazione:
+ ```
+ error: This Rx might leak! Either explicitly mark it unsafe (Rx.unsafe) or ensure an implicit RxCtx is in scope!
+           val html = Rx{"Home Page! time: " + time()}
+           ```
