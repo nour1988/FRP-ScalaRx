@@ -263,4 +263,53 @@ Avere una `Rx[WebPage]`, dove la `WebPage` ha una `Rx[String]` all'interno, semb
  ```
  error: This Rx might leak! Either explicitly mark it unsafe (Rx.unsafe) or ensure an implicit RxCtx is in scope!
            val html = Rx{"Home Page! time: " + time()}
-           ```
+```
+Per capire la `ownership` è importante capire il problema che risolve: `leaks`. Ad esempio, considera questa leggera modifica al primo esempio:
+```
+var count = 0
+val a = Var(1); val b = Var(2)
+def mkRx(i: Int) = Rx.unsafe { count += 1; i + b() }
+val c = Rx{ 
+  val newRx = mkRx(a()) 
+  newRx() 
+}
+println(c.now, count) //(3,1)
+```
+In questa versione è stata aggiunta la funzione `mkRx`, ma per il resto il valore calcolato di `c` rimane invariato. E la modifica di `a` sembra comportarsi come previsto:
+```
+a() = 4
+println(c.now, count) //(6,2)
+```
+Ma se modifichiamo `b` potremmo iniziare a notare qualcosa che non va:
+```
+b() = 3 
+println(c.now, count) //(7,5) -- 5??
+
+(0 to 100).foreach { i => a() = i }
+println(c.now, count) //(103,106)
+
+b() = 4
+println(c.now, count) //(104,211) -- 211!!!
+```
+In questo esempio, anche se `b` viene aggiornato solo poche volte, il valore del conteggio inizia a salire man mano che a viene modificato. Questo è `mkRx` che perde! Cioè, ogni volta che `c` viene ricalcolato, costruisce un `Rx` completamente nuovo che rimane e continua a valutare, anche dopo che non è più raggiungibile come dipendenza dai dati e dimenticato. Quindi, dopo aver eseguito quell'istruzione `(da 0 a 100).foreach`, ci sono oltre 100 `Rx` che si attivano tutti ogni volta che `b` viene modificato. Questo chiaramente non è desiderabile.
+
+Tuttavia, aggiungendo un esplicito `owner` (e rimuovendo `unsafe`), possiamo correggere la perdita:
+```
+var count = 0
+val a = Var(1); val b = Var(2)
+def mkRx(i: Int)(implicit ctx: Ctx.Owner) = Rx { count += 1; i + b() }
+val c = Rx{ 
+  val newRx = mkRx(a()) 
+  newRx() 
+}
+println(c.now,count) // (3,1)
+a() = 4
+println(c.now,count) // (6,2)
+b() = 3
+println(c.now,count) // (7,4)
+(0 to 100).foreach { i => a() = i }
+println(c.now,count) //(103,105)
+b() = 4
+println(c.now,count) //(104,107)
+```
+L’ownership corregge le perdite consentendo a un genitore `Rx` di tenere traccia della sua `Rx` nidificata "owned". Cioè ogni volta che un `Rx` ricacola, prima uccide tutte le sue dipendenze di proprietà, assicurandosi che non perdano. In questo esempio, `c` è il proprietario di tutti gli `Rx` creati in `mkRx` e li uccide automaticamente ogni volta che `c` ricalcola.
