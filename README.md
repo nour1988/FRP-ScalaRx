@@ -313,3 +313,50 @@ b() = 4
 println(c.now,count) //(104,107)
 ```
 L’ownership corregge le perdite consentendo a un genitore `Rx` di tenere traccia della sua `Rx` nidificata "owned". Cioè ogni volta che un `Rx` ricacola, prima uccide tutte le sue dipendenze di proprietà, assicurandosi che non perdano. In questo esempio, `c` è il proprietario di tutti gli `Rx` creati in `mkRx` e li uccide automaticamente ogni volta che `c` ricalcola.
+  ##  Data Context
+Dato un Rx o un Var usando `()` (aka `apply`) scarta il valore corrente e si aggiunge come dipendenza a qualunque `Rx` che sta attualmente valutando. In alternativa, `.now` può essere utilizzato semplicemente per scartare il valore e saltare la dipendenza dai dati:
+```
+val a = Var(1); val b = Var(2)
+val c = Rx{ a.now + b.now } //not a very useful `Rx`
+println(c.now) // 3
+a() = 4
+println(c.now) // 3 
+b() = 5
+println(c.now) // 3 
+```
+Per comprendere la necessità di un `Data` context e in che modo i `Data` contexts differiscono dai `owner` contexts, si consideri il seguente esempio:
+```
+def foo()(implicit ctx: Ctx.Owner) = {
+  val a = rx.Var(1)
+  a()
+  a
+}
+
+val x = rx.Rx{val y = foo(); y() = y() + 1; println("done!") }
+```
+Con il concetto di proprietà, se `a()` è autorizzato a creare una dipendenza dati dal suo proprietario, entrerebbe in una ricorsione infinita e esploderebbe lo stack! Invece, il codice sopra fornisce questo errore di compilazione:
+```
+<console>:17: error: No implicit Ctx.Data is available here!
+        a()
+```
+Possiamo "correggere" l'errore consentendo esplicitamente le dipendenze dei dati (e vedere che lo stack esplode):
+```
+def foo()(implicit ctx: Ctx.Owner, data: Ctx.Data) = {
+  val a = rx.Var(1)
+  a()
+  a
+}
+val x = rx.Rx{val y = foo(); y() = y() + 1; println("done!") }
+...
+at rx.Rx$Dynamic$Internal$$anonfun$calc$2.apply(Core.scala:180)
+  at scala.util.Try$.apply(Try.scala:192)
+  at rx.Rx$Dynamic$Internal$.calc(Core.scala:180)
+  at rx.Rx$Dynamic$Internal$.update(Core.scala:184)
+  at rx.Rx$.doRecalc(Core.scala:130)
+  at rx.Var.update(Core.scala:280)
+  at $anonfun$1.apply(<console>:15)
+  at $anonfun$1.apply(<console>:15)
+  at rx.Rx$Dynamic$Internal$$anonfun$calc$2.apply(Core.scala:180)
+  at scala.util.Try$.apply(Try.scala:192)
+...
+```
