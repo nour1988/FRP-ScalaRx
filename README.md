@@ -360,3 +360,18 @@ at rx.Rx$Dynamic$Internal$$anonfun$calc$2.apply(Core.scala:180)
   at scala.util.Try$.apply(Try.scala:192)
 ...
 ```
+Il `Data` context è il meccanismo che un `Rx` utilizza per decidere quando ricacolare. L’ownership risolve il problema delle perdite. Mescolare i due può portare a una ricorsione infinita: quando qualcosa è sia di proprietà che una dipendenza dai dati dello stesso genitore Rx.
+
+Fortunatamente però è quasi sempre il caso che sia necessario solo l'uno o l'altro contesto. quando si tratta di grafici dinamici, è quasi sempre il caso che sia necessario solo il contesto di proprietà, ovvero le funzioni più spesso hanno la forma:
+```
+def f(...)(implicit ctx: Ctx.Owner) = Rx { ... }
+```
+Il Data context è necessario meno spesso ed è utile, ad esempio, nel caso in cui sia desiderabile ASCIUGARE del codice Rx ripetuto. Tale funzione avrebbe questa forma:
+```
+def f(...)(implicit data: Ctx.Data) = ...
+```
+Ciò consentirebbe di estrarre una certa dipendenza dai dati condivisi dal corpo di ogni `Rx` e nella funzione condivisa.
+
+Suddividendo i concetti ortogonali di `ownership` e `data` dependencies , il problema della ricorsione infinita, come descritto sopra, è notevolmente limitato. Le dipendenze esplicite dei dati rendono anche più chiaro quando l'uso di un `Var` o `Rx` è inteso come una dipendenza dei dati e non solo una semplice lettura del valore corrente (ad esempio `.now`). Senza questa distinzione, è più facile introdurre dipendenze di dati "accidentali" inattese e non volute.
+ ##  Operazioni aggiuntive
+ 
