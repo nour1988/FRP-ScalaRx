@@ -72,3 +72,34 @@ Come si può vedere sopra, la modifica del valore di `a` fa sì che la modifica 
 
 Le modifiche si propagano attraverso il grafico del flusso di dati in onde. Ogni aggiornamento di un Var innesca una propagazione, che spinge le modifiche da quel Var `a` qualsiasi Rx che è (direttamente o indirettamente) dipendente dal suo valore. Nel processo, è possibile ricalcolare una Rx più di una volta.
 
+### Observers
+Come accennato, gli Obs s possono essere creati da Rx s o Var s ed essere utilizzati per eseguire effetti collaterali quando cambiano:
+```
+val a = Var(1)
+var count = 0
+val o = a.trigger {
+  count = a.now + 1
+}
+println(count) // 2
+a() = 4
+println(count) // 5
+```
+Questo crea un grafico del flusso di dati che assomiglia a:
+![image](https://user-images.githubusercontent.com/63450698/146186212-8b8d325f-98a9-4455-9039-16a1e3504b8c.png)
+
+Quando `a` viene modificato, l'osservatore `o` eseguirà l'effetto collaterale:
+![image](https://user-images.githubusercontent.com/63450698/146186298-5c027b9e-92c9-4c94-aab9-ba3f8fd2aaec.png)
+
+Il corpo di Rxs dovrebbe essere privo di effetti collaterali, poiché possono essere eseguiti più di una volta per propagazione. Dovresti usare Obs s per eseguire i tuoi effetti collaterali, poiché è garantito che vengano eseguiti solo una volta per propagazione dopo che i valori per tutti gli Rx si sono stabilizzati.
+
+Scala.Rx fornisce un comodo combinatore `.foreach()`, che fornisce un modo alternativo per creare un Obs da un Rx:
+```
+val a = Var(1)
+var count = 0
+val o = a.foreach{ x =>
+  count = x + 1
+}
+println(count) // 2
+a() = 4
+println(count) // 5
+```
