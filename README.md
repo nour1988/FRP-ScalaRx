@@ -410,3 +410,51 @@ val b = for {
   aa + bb + cc
 }
 ```
+### Filter
+```
+val a = Var(10)
+val b = a.filter(_ > 5)
+a() = 1
+println(b.now) // 10
+a() = 6
+println(b.now) // 6
+a() = 2
+println(b.now) // 6
+a() = 19
+println(b.now) // 19
+```
+Il `filter` ignora le modifiche al valore della Rx che non superano il predicato.
+
+Si noti che nessuno dei metodi di filtro è in grado di filtrare il primo valore iniziale di un Rx, poiché non esiste un valore "più vecchio" a cui ricorrere. Quindi questo:
+```
+val a = Var(2)
+val b = a.filter(_ > 5)
+println(b.now)
+```
+stamperà "2".
+### Reduce
+```
+val a = Var(1)
+val b = a.reduce(_ * _)
+a() = 2
+println(b.now) // 2
+a() = 3
+println(b.now) // 6
+a() = 4
+println(b.now) // 24
+```
+L'operatore di `reduce` combina insieme i valori successivi di un Rx, a partire dal valore iniziale. Ogni modifica alla Rx originale viene abbinata al valore precedentemente memorizzato e diventa il nuovo valore della Rx ridotta.
+### Fold
+```
+val a = Var(1)
+val b = a.fold(List.empty[Int])((acc,elem) => elem :: acc)
+a() = 2
+println(b.now) // List(2,1)
+a() = 3
+println(b.now) // List(3,2,1)
+a() = 4
+println(b.now) // List(4,3,2,1)
+```
+`Fold` consente l'accumulo in modo simile per ridurre, ma può accumularsi in un tipo diverso da quello della sorgente Rx.
+
+Ciascuno di questi cinque combinatori ha una controparte nello spazio dei nomi `.all` che opera su `Try[T]` anziché su T, nel caso in cui sia necessaria la flessibilità aggiuntiva per gestire i `Failure` in qualche modo speciale.
