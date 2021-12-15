@@ -132,3 +132,126 @@ a() = 3
 println(target) // 4
 ```
 Dopo aver chiamato manualmente `.kill()`, Obs non si attiva più. Oltre a `.kill()`ing Obss, puoi anche uccidere Rxs, che impedisce ulteriori aggiornamenti.
+
+In generale, Scala.Rx ruota attorno alla costruzione di grafici del flusso di dati che mantengono automaticamente le cose sincronizzate, con cui puoi interagire facilmente da un codice imperativo esterno. Ciò comporta l'utilizzo di:
+- Vars come input al grafico del flusso di dati dal mondo imperativo
+- Rxs come nodi intermedi nei grafici del flusso di dati
+- Obss come output dal grafico del flusso di dati nel mondo imperativo
+
+### Complex Reactives
+
+Le Rx non sono limitate a `Int`s. `String`s, `Seq[Int]`s, `Seq[String]`s, qualsiasi cosa può andare all'interno di un Rx:
+```
+val a = Var(Seq(1, 2, 3))
+val b = Var(3)
+val c = Rx{ b() +: a() }
+val d = Rx{ c().map("omg" * _) }
+val e = Var("wtf")
+val f = Rx{ (d() :+ e()).mkString }
+
+println(f.now) // "omgomgomgomgomgomgomgomgomgwtf"
+a() = Nil
+println(f.now) // "omgomgomgwtf"
+e() = "wtfbbq"
+println(f.now) // "omgomgomgwtfbbq"
+```
+### Error Handling
+Poiché il corpo di un Rx può essere qualsiasi codice Scala arbitrario, può generare eccezioni. Propagare l'eccezione nello stack di chiamate non avrebbe molto senso, poiché il codice che valuta l'Rx probabilmente non ha il controllo del motivo per cui non è riuscito. Invece, qualsiasi eccezione viene rilevata dalla stessa Rx e memorizzata internamente come `Try`.
+
+Questo può essere visto nel seguente unit test:
+```
+val a = Var(1)
+val b = Rx{ 1 / a() }
+println(b.now) // 1
+println(b.toTry) // Success(1)
+a() = 0
+intercept[ArithmeticException]{
+  b()
+}
+assert(b.toTry.isInstanceOf[Failure])
+```
+Inizialmente, il valore di `a` è `1` e quindi anche il valore di `b` è `1`. Puoi anche estrarre il `Try` interno usando `b.toTry`, che all'inizio è `Success(1)`.
+
+Tuttavia, quando il valore di `a` diventa `0`, il corpo di `b` genera un'ArithmeticException. Questo viene catturato da `b` e rilanciato se si tenta di estrarre il valore da `b` usando `b()`. È possibile estrarre l'intero `Try` usando `toTry` e il pattern match su di esso per gestire sia il caso `Success` che il caso `Failure`.
+
+Quando si hanno molti Rx concatenati, le eccezioni si propagano in avanti seguendo il grafico delle dipendenze, come ci si aspetterebbe. Il seguente codice:
+```
+val a = Var(1)
+val b = Var(2)
+
+val c = Rx{ a() / b() }
+val d = Rx{ a() * 5 }
+val e = Rx{ 5 / b() }
+val f = Rx{ a() + b() + 2 }
+val g = Rx{ f() + c() }
+
+inside(c.toTry){case Success(0) => () }
+inside(d.toTry){case Success(5) => () }
+inside(e.toTry){case Success(2) => () }
+inside(f.toTry){case Success(5) => () }
+inside(g.toTry){case Success(5) => () }
+
+b() = 0
+
+inside(c.toTry){case Failure(_) => () }
+inside(d.toTry){case Success(5) => () }
+inside(e.toTry){case Failure(_) => () }
+inside(f.toTry){case Success(3) => () }
+inside(g.toTry){case Failure(_) => () }
+```
+Crea un grafico delle dipendenze simile al seguente:
+![image](https://user-images.githubusercontent.com/63450698/146188717-64e1882e-6d5b-4702-b3fc-cab3a88c9009.png)
+
+In questo esempio, inizialmente tutti i valori per `a`, `b`, `c`, `d`, `e`, `f` e `g` sono ben definiti. Tuttavia, quando `b` è impostato su `0`:
+![image](https://user-images.githubusercontent.com/63450698/146188917-b34b9ddd-f2d9-4880-9c98-4e2c9021a578.png)
+
+`c` ed `e` risultano entrambi in eccezioni e l'eccezione da `c` si propaga a `g`. Il tentativo di estrarre il valore da g utilizzando `g.now`, ad esempio, genererà nuovamente l'ArithmeticException. Anche in questo caso, l'utilizzo di `toTry` funziona.
+### Nesting
+Le Rx possono contenere altre Rx, arbitrariamente in profondità. Questo esempio mostra gli Rx annidati a due livelli di profondità:
+```
+val a = Var(1)
+val b = Rx{
+    (Rx{ a() }, Rx{ math.random })
+}
+val r = b.now._2.now
+a() = 2
+println(b.now._2.now) // r
+```
+In questo esempio, possiamo vedere che, sebbene abbiamo modificato `a`, questo riguarda solo l'Rx interno sinistro, né l'Rx interno destro (che assume un valore diverso e casuale ogni volta che viene ricalcolato) o l'Rx esterno ( che farebbe ricalcolare l'intera cosa) sono interessati. Un esempio un po' meno forzato potrebbe essere:
+```
+var fakeTime = 123
+trait WebPage{
+    def fTime = fakeTime
+    val time = Var(fTime)
+    def update(): Unit  = time() = fTime
+    val html: Rx[String]
+}
+class HomePage(implicit ctx: Ctx.Owner) extends WebPage {
+    val html = Rx{"Home Page! time: " + time()}
+}
+class AboutPage(implicit ctx: Ctx.Owner) extends WebPage {
+    val html = Rx{"About Me, time: " + time()}
+}
+
+val url = Var("www.mysite.com/home")
+val page = Rx{
+    url() match{
+        case "www.mysite.com/home" => new HomePage()
+        case "www.mysite.com/about" => new AboutPage()
+    }
+}
+
+println(page.now.html.now) // "Home Page! time: 123"
+
+fakeTime = 234
+page.now.update()
+println(page.now.html.now) // "Home Page! time: 234"
+
+fakeTime = 345
+url() = "www.mysite.com/about"
+println(page.now.html.now) // "About Me, time: 345"
+
+fakeTime = 456
+page.now.update()
+println(page.now.html.now) // "About Me, time: 456"
+```
