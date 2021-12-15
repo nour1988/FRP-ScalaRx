@@ -458,3 +458,4 @@ println(b.now) // List(4,3,2,1)
 `Fold` consente l'accumulo in modo simile per ridurre, ma può accumularsi in un tipo diverso da quello della sorgente Rx.
 
 Ciascuno di questi cinque combinatori ha una controparte nello spazio dei nomi `.all` che opera su `Try[T]` anziché su T, nel caso in cui sia necessaria la flessibilità aggiuntiva per gestire i `Failure` in qualche modo speciale.
+ ## Combinatori asincroni
