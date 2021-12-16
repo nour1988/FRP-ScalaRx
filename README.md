@@ -1,5 +1,5 @@
 # Indicazione:
-In questo capitolo tutti gli esempi sono già implementati su GitHub sotto il percorso `project>src>main>scala>tests>exampleX.scala` dove `exampleX.scala` indica il titolo dell’esempio che coincide con l’`object` di scala su github.
+Tutti gli esempi sono già implementati su GitHub sotto il percorso `project>src>main>scala>tests>exampleX.scala` dove `exampleX.scala` indica il titolo dell’esempio che coincide con l’`object` di scala su GitHub.
 
 # Scala.Rx 0.4.1
 Scala.Rx è una libreria di propagazione del cambiamento per Scala. Scala.Rx fornisce le variabili reattive (Rxs), che sono variabili intelligenti che si aggiornano automaticamente quando i valori da cui dipendono cambiano. L'implementazione sottostante è un FRP basato su push basato sulle idee in Deprecating the Observer Pattern.   
