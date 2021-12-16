@@ -1,3 +1,6 @@
+# Indicazione:
+In questo capitolo tutti gli esempi sono già implementati su GitHub sotto il percorso `project>src>main>scala>tests>exampleX.scala` dove `exampleX.scala` indica il titolo dell’esempio che coincide con l’`object` di scala su github.
+
 # Scala.Rx 0.4.1
 Scala.Rx è una libreria di propagazione del cambiamento per Scala. Scala.Rx fornisce le variabili reattive (Rxs), che sono variabili intelligenti che si aggiornano automaticamente quando i valori da cui dipendono cambiano. L'implementazione sottostante è un FRP basato su push basato sulle idee in Deprecating the Observer Pattern.   
 Un semplice esempio che dimostra il comportamento è:  
@@ -575,3 +578,4 @@ eventually{
 Il combinatore `debounce(t)` crea una versione di un Rx che non si aggiornerà più di una volta ogni periodo di tempo `t`.
 
 Se si verificano più aggiornamenti in un breve lasso di tempo (meno di t l'uno dall'altro), il primo aggiornamento verrà eseguito immediatamente e il secondo verrà eseguito solo dopo che sarà trascorso il tempo t. Ad esempio, questo può essere usato per limitare la velocità con cui viene ricalcolato un risultato costoso: potresti essere disposto a lasciare che il valore calcolato sia obsoleto di alcuni secondi se ti consente di risparmiare sull'esecuzione del calcolo costoso più di una volta ogni pochi secondi.
+
