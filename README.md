@@ -503,6 +503,8 @@ println(b.now) //9
 Il valore di `b()` si aggiorna come ci si aspetterebbe quando la serie di `Futures` viene completata (in questo caso, manualmente utilizzando `Promises`).
 
 Questo è utile se il grafico delle dipendenze contiene alcuni elementi asincroni. Ad esempio, potresti avere un Rx che dipende da un altro Rx, ma richiede una richiesta web asincrona per calcolare il suo valore finale. Con `async`, i risultati della richiesta web asincrona verranno automaticamente riportati nel grafico del flusso di dati al completamento di `Future`, avviando un'altra esecuzione di propagazione e aggiornando convenientemente il resto del grafico che dipende dal nuovo risultato.
+### Timer
+
 ```
 import rx.async._
 import rx.async.Platform._
@@ -518,3 +520,58 @@ println(count) // 3
 println(count) // 8
 println(count) // 13
 ```
+Un `Timer[10]` è un Rx che genera eventi su base regolare. Nell'esempio sopra, l'utilizzo di println nella console mostra che il valore `t()` è aumentato nel tempo.
+
+L'attività pianificata viene annullata automaticamente quando l'oggetto Timer diventa irraggiungibile, quindi può essere Garbage Collection. Ciò significa che non devi preoccuparti della gestione del ciclo di vita del Timer. D'altra parte, questo significa che il programmatore dovrebbe assicurarsi che il riferimento al Timer sia tenuto dallo stesso oggetto di quello che tiene qualsiasi Rx che lo ascolta. Ciò assicurerà che il momento esatto in cui il Timer viene raccolto immondizia non avrà importanza, poiché a quel punto l'oggetto che lo contiene (e qualsiasi Rx che potrebbe influenzare) sono entrambi irraggiungibili.
+### Delay
+```
+import rx.async._
+import rx.async.Platform._
+import scala.concurrent.duration._
+
+val a = Var(10)
+val b = a.delay(250 millis)
+
+a() = 5
+println(b.now) // 10
+eventually{
+  println(b.now) // 5
+}
+
+a() = 4
+println(b.now) // 5
+eventually{
+  println(b.now) // 4
+}
+```
+Il combinatore `delay(t)` crea una versione ritardata di un Rx il cui valore è in ritardo rispetto all'originale di una durata `t`. Quando la `Rx` cambia, la versione ritardata non cambierà fino a quando non sarà passato il ritardo `t`. 
+
+Questo esempio mostra il ritardo applicato a un `Var`, ma potrebbe essere facilmente applicato anche a un `Rx`.
+### Debounce
+```
+import rx.async._
+import rx.async.Platform._
+import scala.concurrent.duration._
+
+val a = Var(10)
+val b = a.debounce(200 millis)
+a() = 5
+println(b.now) // 5
+
+a() = 2
+println(b.now) // 5
+
+eventually{
+  println(b.now) // 2
+}
+
+a() = 1
+println(b.now) // 2
+
+eventually{
+  println(b.now) // 1
+}
+```
+Il combinatore `debounce(t)` crea una versione di un Rx che non si aggiornerà più di una volta ogni periodo di tempo `t`.
+
+Se si verificano più aggiornamenti in un breve lasso di tempo (meno di t l'uno dall'altro), il primo aggiornamento verrà eseguito immediatamente e il secondo verrà eseguito solo dopo che sarà trascorso il tempo t. Ad esempio, questo può essere usato per limitare la velocità con cui viene ricalcolato un risultato costoso: potresti essere disposto a lasciare che il valore calcolato sia obsoleto di alcuni secondi se ti consente di risparmiare sull'esecuzione del calcolo costoso più di una volta ogni pochi secondi.
