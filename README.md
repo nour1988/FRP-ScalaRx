@@ -459,3 +459,62 @@ println(b.now) // List(4,3,2,1)
 
 Ciascuno di questi cinque combinatori ha una controparte nello spazio dei nomi `.all` che opera su `Try[T]` anziché su T, nel caso in cui sia necessaria la flessibilità aggiuntiva per gestire i `Failure` in qualche modo speciale.
  ## Combinatori asincroni
+ Questi sono combinatori che fanno di più che semplicemente trasformare un valore da uno all'altro. Questi hanno effetti asincroni e possono modificare spontaneamente il grafico del flusso di dati e iniziare cicli di propagazione senza alcun trigger esterno. Sebbene ciò possa sembrare alquanto inquietante, la funzionalità fornita da questi combinatori è spesso necessaria e scrivere manualmente la logica attorno a qualcosa come Debouncing, ad esempio, è molto più soggetto a errori rispetto al semplice utilizzo dei combinatori forniti.
+ 
+Nota che nessuno di questi combinatori sta facendo qualcosa che non può essere fatto tramite una combinazione di Obss e Vars; incapsulano semplicemente i modelli comuni, risparmiandoti di scriverli manualmente più e più volte e riducendo il potenziale di bug.
+### Future
+```
+import scala.concurrent.Promise
+import scala.concurrent.ExecutionContext.Implicits.global
+import rx.async._
+
+val p = Promise[Int]()
+val a = p.future.toRx(10)
+println(a.now) //10
+p.success(5)
+println(a.now) //5
+```
+Il combinatore `toRx` si applica solo ai `Future[_]`. Prende un valore iniziale, che sarà il valore della `Rx` fino al completamento del `Future`, a quel punto il valore diventerà il valore del `Future`.
+
+Questo `async` può creare `Futures` tutte le volte necessarie. Questo esempio mostra la creazione di due `Futures` distinti:
+```
+import scala.concurrent.Promise
+import scala.concurrent.ExecutionContext.Implicits.global
+import rx.async._
+
+var p = Promise[Int]()
+val a = Var(1)
+
+val b: Rx[Int] = Rx {
+  val f =  p.future.toRx(10)
+  f() + a()
+}
+println(b.now) //11
+p.success(5)
+println(b.now) //6
+
+p = Promise[Int]()
+a() = 2
+println(b.now) //12
+
+p.success(7)
+println(b.now) //9
+```
+Il valore di `b()` si aggiorna come ci si aspetterebbe quando la serie di `Futures` viene completata (in questo caso, manualmente utilizzando `Promises`).
+
+Questo è utile se il grafico delle dipendenze contiene alcuni elementi asincroni. Ad esempio, potresti avere un Rx che dipende da un altro Rx, ma richiede una richiesta web asincrona per calcolare il suo valore finale. Con `async`, i risultati della richiesta web asincrona verranno automaticamente riportati nel grafico del flusso di dati al completamento di `Future`, avviando un'altra esecuzione di propagazione e aggiornando convenientemente il resto del grafico che dipende dal nuovo risultato.
+```
+import rx.async._
+import rx.async.Platform._
+import scala.concurrent.duration._
+
+val t = Timer(100 millis)
+var count = 0
+val o = t.trigger {
+    count = count + 1
+}
+
+println(count) // 3
+println(count) // 8
+println(count) // 13
+```
