@@ -1,6 +1,6 @@
 package tests
 
-object example3 extends App {
+object example03 extends App {
 
   import rx._
 

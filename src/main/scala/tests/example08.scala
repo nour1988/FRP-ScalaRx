@@ -1,6 +1,6 @@
 package tests
 
-object example8 extends App{
+object example08 extends App{
   import rx._
 
   val a = Var(1)

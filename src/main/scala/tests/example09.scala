@@ -1,6 +1,6 @@
 package tests
 
-object example9 extends App{
+object example09 extends App{
   import rx._
 
   val a = Var(Seq(1, 2, 3))
