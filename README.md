@@ -1,3 +1,5 @@
+# Relazione:
+
 # Indicazione:
 Tutti gli esempi sono già implementati su GitHub sotto il percorso `project>src>main>scala>tests>exampleX.scala` dove `exampleX.scala` indica il titolo dell’esempio che coincide con l’`object` di scala su GitHub.
 
