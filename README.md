@@ -1,4 +1,5 @@
-# Relazione:
+# Relazione: 
+Si puo consultare la relazione del progetto su questo link: https://github.com/nour1988/FRP-ScalaRx/blob/master/relazione_pps_Slimani.pdf
 
 # Indicazione:
 Tutti gli esempi sono già implementati su GitHub sotto il percorso `project>src>main>scala>tests>exampleX.scala` dove `exampleX.scala` indica il titolo dell’esempio che coincide con l’`object` di scala su GitHub.
