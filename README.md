@@ -1,8 +1,8 @@
-# Relazione: 
-Si puo consultare la relazione del progetto su questo link: https://github.com/nour1988/FRP-ScalaRx/blob/master/relazione_pps_Slimani.pdf
+# Indicazione Relazione Progetto: 
+Si può consultare la relazione del progetto tramite questo link: https://github.com/nour1988/FRP-ScalaRx/blob/master/relazione_pps_Slimani.pdf
 
-# Indicazione:
-Tutti gli esempi sono già implementati su GitHub sotto il percorso `project>src>main>scala>tests>exampleX.scala` dove `exampleX.scala` indica il titolo dell’esempio che coincide con l’`object` di scala su GitHub.
+# Indicazione Esempi .Scala:
+Tutti gli esempi sono già implementati su GitHub sotto il percorso https://github.com/nour1988/FRP-ScalaRx/tree/master/src/main/scala/tests dove `exampleX.scala` indica sia il titolo dell’esempio nela relazione sia il nome dell’`object` su scala.
 
 # Scala.Rx 0.4.1
 Scala.Rx è una libreria di propagazione del cambiamento per Scala. Scala.Rx fornisce le variabili reattive (Rxs), che sono variabili intelligenti che si aggiornano automaticamente quando i valori da cui dipendono cambiano. L'implementazione sottostante è un FRP basato su push basato sulle idee in Deprecating the Observer Pattern.   
